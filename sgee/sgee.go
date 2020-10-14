@@ -2,9 +2,19 @@ package sgee
 
 import "net/http"
 
-type Engine struct {
-	router *router
-}
+type (
+	RouteGroup struct {
+		prefix      string
+		middlewares []HandlerFunc
+		parent      *RouteGroup
+		engine      *Engine
+	}
+
+	Engine struct {
+		router *router
+		*RouteGroup
+	}
+)
 
 func NewEngine() *Engine {
 	return &Engine{
