@@ -30,5 +30,11 @@ func (e *Engine) Run(addr string) error {
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	context := NewContext(w, r)
 	routerKey := context.Method + "-" + context.Path
-	e.router.handlers[routerKey](context)
+
+	handler := e.router.handlers[routerKey]
+	if handler != nil {
+		handler(context)
+	} else {
+		context.String(http.StatusNotFound, "404 NOT FOUND: %s\n", r.URL.Path)
+	}
 }
