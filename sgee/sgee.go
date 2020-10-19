@@ -2,6 +2,8 @@ package sgee
 
 import "net/http"
 
+type HandlerFunc func(*Context)
+
 type (
 	RouteGroup struct {
 		prefix      string
@@ -13,19 +15,25 @@ type (
 	Engine struct {
 		router *router
 		*RouteGroup
+		groups []*RouteGroup
 	}
 )
 
 func NewEngine() *Engine {
-	return &Engine{
-		router: NewRouter(),
-	}
+	engine := &Engine{router: NewRouter()}
+	engine.RouteGroup = &RouteGroup{engine: engine}
+	return engine
 }
 
-type HandlerFunc func(*Context)
+func (r *RouteGroup) Group(prefix string) *RouteGroup {
+	engine := r.engine
+	newGroup := &RouteGroup{prefix: prefix, parent: r, engine: engine}
+	engine.groups = append(engine.groups, newGroup)
+	return newGroup
+}
 
-func (e *Engine) Get(pattern string, handler HandlerFunc) {
-	e.addRoute("GET", pattern, handler)
+func (g *RouteGroup) Get(pattern string, handler HandlerFunc) {
+	g.engine.router.handlers[pattern] = handler
 }
 
 func (e *Engine) addRoute(method string, comp string, handlerFunc HandlerFunc) {
