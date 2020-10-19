@@ -1,6 +1,9 @@
 package sgee
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 type HandlerFunc func(*Context)
 
@@ -25,34 +28,43 @@ func NewEngine() *Engine {
 	return engine
 }
 
+func Default() *Engine {
+	engine := NewEngine()
+	engine.Use(Logger())
+	return engine
+}
+
 func (r *RouteGroup) Group(prefix string) *RouteGroup {
 	engine := r.engine
-	newGroup := &RouteGroup{prefix: prefix, parent: r, engine: engine}
+	newGroup := &RouteGroup{prefix: r.prefix + prefix, parent: r, engine: engine}
 	engine.groups = append(engine.groups, newGroup)
 	return newGroup
 }
 
-func (g *RouteGroup) Get(pattern string, handler HandlerFunc) {
-	g.engine.router.handlers[pattern] = handler
+func (r *RouteGroup) Use(h HandlerFunc) {
+	r.middlewares = append(r.middlewares, h)
 }
 
-func (e *Engine) addRoute(method string, comp string, handlerFunc HandlerFunc) {
-	routerKey := method + "-" + comp
-	e.router.handlers[routerKey] = handlerFunc
+func (r *RouteGroup) Get(pattern string, handler HandlerFunc) {
+	r.addRoute("GET", pattern, handler)
 }
 
-func (e *Engine) Run(addr string) error {
-	return http.ListenAndServe(addr, e)
+func (r *RouteGroup) addRoute(method string, comp string, handlerFunc HandlerFunc) {
+	routerKey := method + "-" + r.prefix + comp
+	r.engine.router.handlers[routerKey] = handlerFunc
 }
 
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	context := NewContext(w, r)
-	routerKey := context.Method + "-" + context.Path
 
-	handler := e.router.handlers[routerKey]
-	if handler != nil {
-		handler(context)
-	} else {
-		context.String(http.StatusNotFound, "404 NOT FOUND: %s\n", r.URL.Path)
+	var middlewares []HandlerFunc
+
+	for _, group := range e.groups {
+		if strings.HasPrefix(r.URL.Path, group.prefix) {
+			middlewares = append(middlewares, group.middlewares...)
+		}
 	}
+
+	c := NewContext(w, r)
+	c.handlers = middlewares
+	e.router.handle(c)
 }

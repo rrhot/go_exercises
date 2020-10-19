@@ -12,6 +12,8 @@ type Context struct {
 	Path       string
 	Method     string
 	StatusCode int
+	handlers   []HandlerFunc
+	index      int
 }
 
 func NewContext(w http.ResponseWriter, req *http.Request) *Context {
@@ -36,4 +38,12 @@ func (c *Context) String(code int, format string, values ...interface{}) {
 	c.SetHeader("Content-Type", "text/plain")
 	c.Status(code)
 	_, _ = c.Writer.Write([]byte(fmt.Sprintf(format, values...)))
+}
+
+func (c *Context) Next() {
+	c.index++
+	s := len(c.handlers)
+	for ; c.index < s; c.index++ {
+		c.handlers[c.index](c)
+	}
 }

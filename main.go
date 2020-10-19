@@ -1,7 +1,7 @@
 package main
 
 import (
-	gee "sgee"
+	"sgee"
 )
 
 //func onlyForV2() gee.HandlerFunc {
@@ -35,14 +35,11 @@ import (
 //}
 
 func SGee() {
-	g := gee.NewEngine()
+	g := sgee.NewEngine()
 
-	g.Get("/index", func(c *gee.Context) {
-		c.JSON(200, "/index")
-	})
-
-	g.Get("/path", func(c *gee.Context) {
-		c.JSON(200, "path")
+	g1 := g.Group("/g1")
+	g1.Get("/p1", func(context *sgee.Context) {
+		context.JSON(200, "/g1/p1")
 	})
 
 	_ = g.Run(":9000")
